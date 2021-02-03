@@ -1,0 +1,113 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 2 - Due date 01/27/21"
+author: Ben Culberson
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+## Submission Instructions
+
+You should open the .rmd file corresponding to this assignment on RStudio. The file is available on our class repository on Github.   
+
+Once you have the file open on your local machine the first thing you will do is change "Student Name" on line 4 with your name. 
+Then you will start working through the assignment by  **creating code and output** that answer each question. Be sure to use this assignment document. Your report should contain the answer to each question and any plots/tables you obtained (when applicable).
+
+When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A02_Sp21.Rmd"). Submit this pdf using Sakai. 
+
+## R packages
+
+R packages needed for this assignment:"forecast","tseries", and "dplyr". Install these packages, if you haven't done yet. Do not forget to load them before running your script, since they are NOT default packages.\\
+
+```{r}
+#Load/install required package here
+library(forecast)
+library(tseries)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+```
+
+
+## Data set information  
+
+Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx" on our **Data** folder. The data comes from the US Energy Information and Administration and corresponds to the January 2021 Monthly Energy Review. The spreadsheet is ready to be used. Use the command $read.table()$ to import the data in R or $panda.read\_excel()$ in Python (note that you will need to import pandas package). }
+
+```{r}
+#Importing data set
+Renewable.df<-read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx")
+Renewable.df
+```
+
+
+## Question 1
+You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
+
+```{r}
+Renewable.df_altered<-Renewable.df %>%
+  select( "Total Biomass Energy Production (Trillion Btu)", "Total Renewable Energy Production (Trillion Btu)", "Hydroelectric Power Consumption (Trillion Btu)")
+head(Renewable.df_altered)
+```
+## Question 2
+Transform your data frame in a time series object and specify the starting point and frequency of the time series using the function ts().
+
+```{r}
+Renewable_ts.df<-ts(data = Renewable.df_altered, start = 1, end = 574, frequency = 1,
+   deltat = 1, ts.eps = getOption("ts.eps"), class = , names = )
+```
+
+## Question 3
+Compute mean and standard deviation for these three series.
+
+```{r}
+mean1<-mean(Renewable_ts.df[,1])  #Total Biomass Energy Production (Trillion Btu)
+sd1<-sd(Renewable_ts.df[,1])
+mean1
+sd1
+mean2<-mean(Renewable_ts.df[,2]) #Total Renewable Energy Production (Trillion Btu) 
+sd2<-sd(Renewable_ts.df[,2])
+mean2
+sd2
+mean3<-mean(Renewable_ts.df[,3]) #Hydroelectric Power Consumption (Trillion Btu)
+sd3<-sd(Renewable_ts.df[,3])
+mean3
+sd3
+#ACF and PACF commands, also just use plot for the next one
+```
+
+## Question 4
+Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
+
+```{r}
+plot(Renewable_ts.df[,1], xlab="Time (Months)", ylab="Trillion Btu")+title("Total Biomass Energy Production")+abline(h=mean1, col="red")
+plot(Renewable_ts.df[,2], xlab="Time (Months)", ylab="Trillion Btu")+title("Total Renewable Energy Production")+abline(h=mean2, col="red")
+plot(Renewable_ts.df[,3], xlab="Time (Months)", ylab="Trillion Btu")+title("Hydroelectric Power Consumption")+abline(h=mean3, col="red")
+```
+
+## Question 5
+Compute the correlation between these three series. Are they significantly correlated? Explain your answer.
+```{r}
+cor(Renewable_ts.df)
+```
+It's clear from the above results that Total Biomass Energy Production and Total Renewable Energy Production are extremely positively correlated with a value of 0.923, while Hydroelectric power consumption is slightly negatively correlated with Total Biomass Energy Production (-0.256) and barely correlated at all with a value of -0.0028.
+
+## Question 6
+Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
+
+```{r}
+acf(Renewable_ts.df, lag.max=40)
+```
+After running the autocorrelation function from lag 1 to lag 40 for the 3 variables, it's clear that Total Biomass Energy Production and Total Renewable Energy Production exhibit similar behavior to one another. Their ACF plots start off as highly correlated but gradually drift somewhat from one another as time goes on. Hydroelectric power consumption varies seasonally however, unlike the other two series which behave more linearly. This results in correlations between hydroelectric power consumption and the other two time series that increase and decrease several times over the course of these 40 months.
+
+## Question 7
+Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
+```{r}
+pacf(Renewable_ts.df, lag.max=40)
+```
+These plots differ from the ones in Q6 because the Partial Autocorrelation function (these plots) do not 
+include the influence of intermediate variables unlike the ACF (Question 6 plots). 
+
+NEED HELP FROM LUANA-
+
+
+
