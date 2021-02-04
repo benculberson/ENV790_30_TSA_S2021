@@ -1,6 +1,6 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
-subtitle: "Assignment 2 - Due date 01/27/21"
+subtitle: "Assignment 2 - Due date 02/05/21"
 author: Ben Culberson
 output: pdf_document
 geometry: margin=2.54cm
@@ -25,7 +25,6 @@ library(forecast)
 library(tseries)
 library(dplyr)
 library(readxl)
-library(ggplot2)
 ```
 
 
@@ -35,8 +34,7 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 
 ```{r}
 #Importing data set
-Renewable.df<-read_excel("Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx")
-Renewable.df
+Renewable.df <- read_excel("/Users/benculberson/Documents/Duke /Spring 2021/Time Series Analysis/ENV790_30_TSA_S2021/Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx")
 ```
 
 
@@ -44,44 +42,37 @@ Renewable.df
 You will work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series only. Use the command head() to verify your data.
 
 ```{r}
-Renewable.df_altered<-Renewable.df %>%
-  select( "Total Biomass Energy Production (Trillion Btu)", "Total Renewable Energy Production (Trillion Btu)", "Hydroelectric Power Consumption (Trillion Btu)")
-head(Renewable.df_altered)
+Renewable_altered.df<-Renewable.df[12:585,4:6]
+colnames(Renewable_altered.df)=c("Total Biomass Energy Production","Total Renewable Energy Production", "Hydroelectric Power Consumption")
 ```
+
 ## Question 2
 Transform your data frame in a time series object and specify the starting point and frequency of the time series using the function ts().
-
 ```{r}
-Renewable_ts.df<-ts(data = Renewable.df_altered, start = 1, end = 574, frequency = 1,
-   deltat = 1, ts.eps = getOption("ts.eps"), class = , names = )
+Renewable_ts.df<-ts(Renewable_altered.df, start=1, frequency=1)
 ```
+
 
 ## Question 3
 Compute mean and standard deviation for these three series.
-
 ```{r}
-mean1<-mean(Renewable_ts.df[,1])  #Total Biomass Energy Production (Trillion Btu)
-sd1<-sd(Renewable_ts.df[,1])
-mean1
-sd1
-mean2<-mean(Renewable_ts.df[,2]) #Total Renewable Energy Production (Trillion Btu) 
-sd2<-sd(Renewable_ts.df[,2])
-mean2
-sd2
-mean3<-mean(Renewable_ts.df[,3]) #Hydroelectric Power Consumption (Trillion Btu)
-sd3<-sd(Renewable_ts.df[,3])
-mean3
-sd3
-#ACF and PACF commands, also just use plot for the next one
+mean(Renewable_ts.df[,1])
+sd(Renewable_ts.df[,1])
+mean(Renewable_ts.df[,2])
+sd(Renewable_ts.df[,2])
+mean(Renewable_ts.df[,3])
+sd(Renewable_ts.df[,3])
 ```
+
 
 ## Question 4
 Display and interpret the time series plot for each of these variables. Try to make your plot as informative as possible by writing titles, labels, etc. For each plot add a horizontal line at the mean of each series in a different color.
 
 ```{r}
-plot(Renewable_ts.df[,1], xlab="Time (Months)", ylab="Trillion Btu")+title("Total Biomass Energy Production")+abline(h=mean1, col="red")
-plot(Renewable_ts.df[,2], xlab="Time (Months)", ylab="Trillion Btu")+title("Total Renewable Energy Production")+abline(h=mean2, col="red")
-plot(Renewable_ts.df[,3], xlab="Time (Months)", ylab="Trillion Btu")+title("Hydroelectric Power Consumption")+abline(h=mean3, col="red")
+plot(Renewable_ts.df[,1], ylab="Trillion Btu", col=c("blue"))+abline(h=mean(Renewable_ts.df[,1]), col=c("red"))+title("Total Biomass Energy Production")
+plot(Renewable_ts.df[,2], ylab="Trillion Btu", col=c("blue"))+abline(h=mean(Renewable_ts.df[,2]), col=c("red"))+title("Total Renewable Energy Production")
+plot(Renewable_ts.df[,3], ylab="Trillion Btu", col=c("blue"))+abline(h=mean(Renewable_ts.df[,3]), col=c("red"))+title("Hydroelectric Power Consumption")
+
 ```
 
 ## Question 5
@@ -89,25 +80,22 @@ Compute the correlation between these three series. Are they significantly corre
 ```{r}
 cor(Renewable_ts.df)
 ```
-It's clear from the above results that Total Biomass Energy Production and Total Renewable Energy Production are extremely positively correlated with a value of 0.923, while Hydroelectric power consumption is slightly negatively correlated with Total Biomass Energy Production (-0.256) and barely correlated at all with a value of -0.0028.
+Total Biomass Energy Production and Total Renewable Energy Production are highly positively correlated to one another with correlation coefficients of roughly 0.8. Hydroelectric power consumption was much less correlated with either of the other two series, with correlation coefficients varying between roughly -0.25 and 0.1. 
 
 ## Question 6
 Compute the autocorrelation function from lag 1 up to lag 40 for these three variables. What can you say about these plots? Do the three of them have the same behavior?
-
 ```{r}
-acf(Renewable_ts.df, lag.max=40)
+acf(Renewable_ts.df[,1], lag.max=40)
+acf(Renewable_ts.df[,2], lag.max=40)
+acf(Renewable_ts.df[,3], lag.max=40)
 ```
-After running the autocorrelation function from lag 1 to lag 40 for the 3 variables, it's clear that Total Biomass Energy Production and Total Renewable Energy Production exhibit similar behavior to one another. Their ACF plots start off as highly correlated but gradually drift somewhat from one another as time goes on. Hydroelectric power consumption varies seasonally however, unlike the other two series which behave more linearly. This results in correlations between hydroelectric power consumption and the other two time series that increase and decrease several times over the course of these 40 months.
+These three plots do not exhibit the same behavior. Both Total Biomass and Total Renewable production plots show a roughly linear decrease in ACF as the lag increases from 1 to 40. There is some seasonality variations but for the most part, this relationship is linear. The Total Hydroelectric Power Consumption on the other hand oscillates significantly as lag increases, with the correlation rising and falling several times as the lag moves from 1 to 40. 
 
 ## Question 7
 Compute the partial autocorrelation function from lag 1 to lag 40 for these three variables. How these plots differ from the ones in Q6?
 ```{r}
-pacf(Renewable_ts.df, lag.max=40)
+pacf(Renewable_ts.df[,1])
+pacf(Renewable_ts.df[,2])
+pacf(Renewable_ts.df[,3])
 ```
-These plots differ from the ones in Q6 because the Partial Autocorrelation function (these plots) do not 
-include the influence of intermediate variables unlike the ACF (Question 6 plots). 
-
-NEED HELP FROM LUANA-
-
-
-
+These three plots differ from the ones in question 6 in that they remove the influence of intermediate values in the correlation calculations. Obviously, this will not alter the lag 1 values, but as lag increases to 40, we see much more seasonality in the total Biomass and Total Renewable production correlation plots. The ACF obscured this seasonality with a slight linear decrease in correlation as lag increased, but these PACF plots clearly show oscillations in the correlations over all three of our series.
