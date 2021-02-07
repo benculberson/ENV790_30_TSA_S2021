@@ -34,12 +34,12 @@ Consider the data provided in the spreadsheet "Table_10.1_Renewable_Energy_Produ
 
 ```{r}
 #Importing data set
-<<<<<<< HEAD
+
 Renewable.df <- read_excel("/Users/benculberson/Documents/Duke /Spring 2021/Time Series Analysis/ENV790_30_TSA_S2021/Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx")
-=======
+
 Renewable.df <- read_excel("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx")
 View(Table_10_1_Renewable_Energy_Production_and_Consumption_by_Source)
->>>>>>> c98aa2c8d8db620d58ca06157e7b8bdaea5a3aaa
+
 ```
 
 
