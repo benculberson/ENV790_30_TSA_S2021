@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
-subtitle: "Assignment 3 - Due date 02/12/21"
-author: "Student Name"
+subtitle: "Assignment 3 - Due date 02/15/21"
+author: "Benjamin Culberson"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -29,20 +29,99 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 ```{r}
 #Load/install required package here
+library(forecast)
+library(tseries)
+library(Kendall)
+library(dplyr)
+library(readxl)
+library(lubridate)
+library(ggplot2)
+library(tseries)
+
 
 ```
 
 ##Trend Component
 
-### Q1
-Create a plot window that has one row and three columns. And then for each object on your data frame, fill the plot window with time series plot, ACF and PACF. You may use the some code form A2, but I want all three plots on the same window this time. (Hint: watch videos for M4)
 
+### Q1
+Create a plot window that has one row and three columns. (using the par command) And then for each object on your data frame, fill the plot window with time series plot, ACF and PACF. You may use the some code form A2, but I want all three plots on the same window this time. (Hint: watch videos for M4)
+```{r}
+Renewable.df <- read.csv("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.csv")
+
+Renewable_date<-Renewable.df[12:585,1]
+
+Renewable_altered.df<-Renewable.df[12:585,4:6]
+
+colnames(Renewable_altered.df)=c("Total Biomass Energy Production","Total Renewable Energy Production", "Hydroelectric Power Consumption")
+
+Renewable_altered.df$Date<-Renewable_date
+
+#using package lubridate
+my_date <- paste(Renewable_altered.df[,4]) #remember we start indexing at 1 cuz we're assholes
+my_date <- ym(my_date)  #function my from package lubridate, my is short for month, year
+
+head(my_date)
+#add that to inflow_data and store in a new data frame 
+Renewable_altered.df <- cbind(my_date,Renewable_altered.df[,1:3])
+head(Renewable_altered.df)
+
+ncolumns <- ncol(Renewable_altered.df)
+
+nmonths <- nrow(Renewable_altered.df) 
+
+#Renewable_altered.df<-lapply(Renewable_altered.df, as.numeric)
+Renewable_ts.df<-ts(Renewable_altered.df[,2:4], start=c(1973, 1), end=c(2020,10), frequency=12)
+Renewable_ts.df<-cbind(my_date,Renewable_ts.df)
+
+
+for(i in 2:4){
+  par(mfrow=c(1,3))  #place plot side by side
+  plot(Renewable_ts.df[,i], ylab="Trillion Btu",  col=c("blue"))+abline(h=mean(Renewable_ts.df[,i]), col=c("red"))+title("Time Series Plot")
+  Acf(Renewable_ts.df[,i],lag.max=40,main=paste("Column",i,"ACF",sep="")) 
+  # because I am not storing Acf() into any object, I don't need to specify plot=TRUE 
+  Pacf(ts_inflow_data[,i],lag.max=40,main=paste("Coumn",i,"PACF",sep=""))
+}
+```
 ### Q2
 From the plot in Q1, do the series Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption appear to have a trend? If yes, what kind of trend?
+
+It appears that Total Biomass Energy Production, Total Renewable Energy Production, and Hydroelectric Power Production have a trend (a long term tendency). This trend seems to be deterministc.
+
 
 ### Q3
 Use the *lm()* function to fit a linear trend to the three time series. Ask R to print the summary of the regression. Interpret the regression output, i.e., slope and intercept. Save the regression coefficients for further analysis.
  
+```{r}
+#Fit a linear trend to TS of Table 10
+linear_trend_model1=lm(Renewable_ts.df[,2]~my_date)  #left of tilda is dependent, to the right is independent. The reason we add 1 is because the first column is date
+summary(linear_trend_model1)
+
+linear_trend_model2=lm(Renewable_ts.df[,3]~my_date)  
+summary(linear_trend_model2)
+
+linear_trend_model3=lm(Renewable_ts.df[,4]~my_date)  
+summary(linear_trend_model3)
+
+trend1beta0=as.numeric(linear_trend_model1$coefficients[1])  #first coefficient is the intercept term or beta0
+trend1beta1=as.numeric(linear_trend_model1$coefficients[2])  #second coefficient is the slope or beta1
+
+trend2beta0=as.numeric(linear_trend_model2$coefficients[1])  #first coefficient is the intercept term or beta0
+trend2beta1=as.numeric(linear_trend_model2$coefficients[2])  #second coefficient is the slope or beta1
+
+trend3beta0=as.numeric(linear_trend_model3$coefficients[1])  #first coefficient is the intercept term or beta0
+trend3beta1=as.numeric(linear_trend_model3$coefficients[2])  #second coefficient is the slope or beta1
+
+
+
+```
+The first linear trend for the plot of Total Biomass Energy Production has an intercept of `r trend1beta0` and a slope of `r trend1beta1` which is statistically significant with a t-statistic of 41.166. From these values we estimate that for each passing month, Total Biomass Energy Production increases by 0.028323 Trillion BTU. 
+
+The second linear trend for the plot of Total Renewable Energy Production has an intercept of `r trend2beta0` and a slope of `r trend2beta1` which is statistically significant with a t-statistic of 23.994 . From these values we estimate that for each passing month, Total Renewable Energy Production increases by 2.327e-02 Trillion BTU. 
+
+The third linear trend for the plot of Hydroelectric Power Consumption has an intercept of `r trend3beta0` and a slope of `r trend3beta1` which is statistically significant with a t-statistic of -7.121. From these values we estimate that for each passing month, Hydroelectric Power Consumption decreases by 0.009375 Trillion BTU. 
+
+
 ### Q4
 Use the regression coefficients from Q3 to detrend the series. Plot the detrended series and  compare with the plots from Q1. What happened? Did anything change?
 
