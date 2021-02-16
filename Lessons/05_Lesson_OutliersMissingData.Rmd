@@ -91,7 +91,7 @@ tail(inflow_data)
 Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
 
 ```{r}
-ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],frequency=12) 
+ts_inflow_data <- ts(inflow_data[,2:(2+nhydro-1)],frequency=12) #don't forget this might require my A3 functions if we're working with an import csv data set
 #note that we are only transforming columns with inflow data, not the date columns  #start=my_date[1],end=my_date[nobs],
 head(ts_inflow_data,15)
 ```
@@ -124,18 +124,18 @@ Note from the plots that some reservoirs have many points outside the box. But i
 
 ## Decomposing the time series
 
-The stats package has a function called decompose(). This function only take time series object. As the name says the decompose function will decompose your time series into three components: trend, seasonal and random. This is similar to what we did in the previous script, but in a more automated way. 
+The stats package has a function called decompose(). This function only takes time series object. As the name says the decompose function will decompose your time series into three components: trend, seasonal and random. This is similar to what we did in the previous script, but in a more automated way. 
 
 The random component is the time series without seasonal and trend component. Let's try to identify outliers by looking at the random component only.
 
 ```{r}
 #Using R decompose function
 iHP=1
-decompose_inflow_data=decompose(ts_inflow_data[,iHP],"additive")
+decompose_inflow_data=decompose(ts_inflow_data[,iHP],"additive") #lol, literally all of last assignment in one function (removes the seasonal and trend components and parses them out)
 plot(decompose_inflow_data)
 
 #Inspect random component
-inflow_random <- decompose_inflow_data$random   
+inflow_random <- decompose_inflow_data$random   #this would just be the random component then
 mean_inflow <- mean(inflow_random)  
 sd_inflow <- sd(inflow_random)
 
@@ -152,14 +152,14 @@ cat(mean_inflow,sd_inflow)
 ```
 ## Missing observations
 
-The decompose function introduced NAs in the beginning and end of the data set. Let's just remove them. NAs on the tails can be simply removed.
+The decompose function introduced NAs in the beginning and end of the data set. Let's just remove them. NAs on the tails can be simply removed. KEEP THIS IN MIND WHEN USING DECOMPOSE
 
 ```{r}
 #Create data frame for further use with new random series
 inflow_random <- data.frame(date=my_date,month=as.factor(month(my_date)),inflow=as.numeric(inflow_random))
 
 #How many NAs we have, you can get it from summary or using is.na()
-sum(is.na(inflow_random$inflow))
+sum(is.na(inflow_random$inflow)) #checking number of NAs
 
 #We have NAs in the beginning and end of data, just remove them
 head(inflow_random,10)
@@ -169,7 +169,7 @@ tail(inflow_random,10)
 inflow_random <- na.omit(inflow_random)
 
 #Check data again
-sum(is.na(inflow_random$inflow))
+sum(is.na(inflow_random$inflow)) #checking number of NAs
 head(inflow_random,10)
 tail(inflow_random,10)
 
@@ -250,8 +250,8 @@ while(pvalue < 0.05){ #the algorithm only enter the loop if the p-value
   pvalue <- out_test$p.value   #Update p-value every time we run the test for a new Aux_Y
   
   if(pvalue < 0.05){
-    aux_inflow <- rm.outlier(aux_inflow,fill=TRUE) #replacing outliers
-    nout <- nout+1
+    aux_inflow <- rm.outlier(aux_inflow,fill=TRUE) #replacing outliers with the mean or median
+    nout <- nout+1 #just out counter to know if it's removed or not
   } 
 }
 cat("Number of outliers removed: ",nout,"\n")
