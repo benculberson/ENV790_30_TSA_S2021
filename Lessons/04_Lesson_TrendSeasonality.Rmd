@@ -204,7 +204,7 @@ beta_int=seas_means_model$coefficients[1]
 beta_coeff=seas_means_model$coefficients[2:12]
 
 #compute seasonal component
-inflow_seas_comp=array(0,nobs)
+inflow_seas_comp=array(0,nobs) #just a vector of 0s that has the length of observations (just can be altered with the following loop), use vector or array for this job. A list would treat each 0 as a different object, whereas the arrray/vector would not
 for(i in 1:nobs){
   inflow_seas_comp[i]=(beta_int+beta_coeff%*%dummies[i,])#   %*% just means inner product of two vectors (1st times 1st value, 2nd times 2nd value, and so on)
 }

@@ -57,7 +57,7 @@ wind_data$DATE <- ym(wind_data$DATE)
 Many of the functions we will use require a time series object. You can transform your data in a time series using the function *ts()*. 
 
 ```{r}
-ts_wind_data <- ts(wind_data$AWND.1,frequency=12) 
+ts_wind_data <- ts(wind_data$AWND.1,frequency=12) #don't worry about start and end for now, mostly work on the frequency
 
 ```
 
@@ -118,8 +118,10 @@ wind_random <- decompose_wind_data$random
 wind_trend <- decompose_wind_data$trend
 wind_seasonal <- decompose_wind_data$seasonal   
 
-#Ex3: Create one data frame with all three vector and teh Date columns from wind_data
+#Ex3: Create one data frame with all three vector and the Date columns from wind_data
 df_wind_decomposed <- data.frame(wind_trend,wind_seasonal,wind_random)
+
+bind(df_wind_decomposed, )
 
 #Ex4: Inspect the data frame using head() and tail()
 head(df_wind_decomposed,10)
@@ -128,12 +130,38 @@ tail(df_wind_decomposed,10)
 
 ```
 
-Discussion: Why the missing values?? 
+Discussion: Why the missing values?? They were only on the trend and random values (first and last 6 observations) because of the way the decompose function calculates these values (moving average requires six observations before and six observations after each data point-therefore, the first and last 6 observations will have no value)
 
 ## Coding challenge
 ```{r}
 
 #Ex5: Try to reproduce the trend component from decompose().
+
+rep_trend<-array(NA, length(clean_wind_data))
+
+for(i in 1:length(wind_trend)){
+  rep_trend[i]=(i)#   %*% just means inner product of two vectors (1st times 1st value, 2nd times 2nd value, and so on)
+}
+```
+
+#Ex6: Try to reproduce the seasonal component from decompose().
+biomass_seas_comp=array(0,nmonths)
+for(i in 1:nmonths){
+  biomass_seas_comp[i]=(beta_int_biomass+beta_coeff_biomass%*%dummies[i,])
+  
+}
+
+ggplot(Renewable_altered.df, aes(x=my_date, y=Renewable_altered.df[,2])) +
+            geom_line(color="blue") +
+            ylab(paste0("Biomass")) +
+            geom_line(aes(y=biomass_seas_comp), col="red")
+
+deseason_renewable_biomass <- Renewable_altered.df[,2]-biomass_seas_comp
+
+ggplot(Renewable_altered.df, aes(x=my_date, y=Renewable_altered.df[,2])) +
+            geom_line(color="blue") +
+            ylab(paste0("Biomass")) +
+            geom_line(aes(y=deseason_renewable_biomass), col="green")
 
 
 ```
