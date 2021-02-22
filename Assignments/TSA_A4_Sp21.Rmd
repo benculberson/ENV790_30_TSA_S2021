@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
 subtitle: "Assignment 4 - Due date 02/25/21"
-author: "Student Name"
+author: "Ben Culberson"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -15,6 +15,10 @@ Then you will start working through the assignment by  **creating code and outpu
 
 When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A04_Sp21.Rmd"). Submit this pdf using Sakai. 
 
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=80), tidy=FALSE) 
+```
+
 ## Questions 
 
 Consider the same data you used for A2 from the spreadsheet "Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.xlsx". The data comes from the US Energy Information and Administration and corresponds to the January 2021 Monthly Energy Review.
@@ -23,7 +27,14 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 ```{r}
 #Load/install required package here
-
+library(forecast)
+library(tseries)
+library(Kendall)
+library(readxl)
+library(readr)
+library(lubridate)
+library(outliers)
+library(tidyverse)
 ```
 
 
@@ -31,15 +42,83 @@ R packages needed for this assignment:"forecast","tseries", and "Kendall". Insta
 
 For this part you will once again work only with the following columns: Total Biomass Energy Production, Total Renewable Energy Production, Hydroelectric Power Consumption. Create a data frame structure with these three time series and the Date column. Don't forget to format the date object.
 
-```{r}
 
+```{r}
+Renewable.df <- read.csv("/Users/benculberson/Documents/Duke /Spring 2021/Time Series Analysis/ENV790_30_TSA_S2021/Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.csv")
+
+Renewable_date<-Renewable.df[12:585,1]
+
+Renewable_altered.df<-Renewable.df[12:585,4:6]
+
+
+
+colnames(Renewable_altered.df)=c("Total Biomass Energy Production","Total Renewable Energy Production", "Hydroelectric Power Consumption")
+
+Renewable_altered.df$Date<-Renewable_date
+
+Renewable_altered.df$`Total Biomass Energy Production`<-as.numeric(Renewable_altered.df$`Total Biomass Energy Production`)
+Renewable_altered.df$`Total Renewable Energy Production`<-as.numeric(Renewable_altered.df$`Total Renewable Energy Production`)
+Renewable_altered.df$`Hydroelectric Power Consumption`<-as.numeric(Renewable_altered.df$`Hydroelectric Power Consumption`)
+
+
+#using package lubridate
+my_date <- paste(Renewable_altered.df[,4]) 
+my_date <- ym(my_date)  #function my from package lubridate, my is short for month, year
+
+head(my_date)
+#add that to inflow_data and store in a new data frame 
+Renewable_altered.df <- cbind(my_date,Renewable_altered.df[,1:3])
+head(Renewable_altered.df)
+
+ncolumns <- ncol(Renewable_altered.df)
+
+nmonths <- nrow(Renewable_altered.df) 
+
+Renewable_ts.df<-ts(Renewable_altered.df[,2:4], start=c(1973, 1), end=c(2020,10), frequency=12)
+Renewable_ts.df<-cbind(my_date,Renewable_ts.df)
 ```
 
 ### Q1
 Now let's try to difference these three series using function diff(). Start with the original data from part (b). Try differencing first at lag 1 and plot the remaining series. Did anything change? Do the series still seem to have trend?
 
+```{r}
+Renewable_ts.df
+Renewable_diff.df<-diff(Renewable_ts.df, lag=1)
+
+for(i in 2:4){
+  #par(mfrow=c(1,3))  #place plot side by side
+  plot(Renewable_ts.df[,i], ylab="Trillion Btu",  col=c("blue"))+abline(h=mean(Renewable_ts.df[,i]), col=c("red"))+title("Time Series Plot")
+  #Acf(Renewable_ts.df[,i],lag.max=40,main=paste("Column",i,"ACF",sep="")) 
+  # because I am not storing Acf() into any object, I don't need to specify plot=TRUE 
+  #Pacf(Renewable_ts.df[,i],lag.max=40,main=paste("Coumn",i,"PACF",sep=""))
+}
+for(i in 2:4){
+  #par(mfrow=c(1,3))  #place plot side by side
+  plot(Renewable_diff.df[,i], ylab="Difference",  col=c("blue"))+abline(h=mean(Renewable_diff.df[,i]), col=c("red"))+title("Difference Plot")
+  #Acf(Renewable_diff.df[,i],lag.max=40,main=paste("Column",i,"ACF",sep="")) 
+  # because I am not storing Acf() into any object, I don't need to specify plot=TRUE 
+  #Pacf(Renewable_diff.df[,i],lag.max=40,main=paste("Coumn",i,"PACF",sep=""))
+}
+```
+After differencing these plots with a lag of 1, the Total Biomass Energy Production series still seems to have an obvious trend-the difference along the x axis is close to 0 for a significant stretch of time. The other two series seem to lose their trend after being differenced. Their seasonality is still clear, but only the first trend appears to obviously maintain its trend. However, as the lag increases to larger values (ex: 50), the trends in all three series become more apparent. 
+
 ### Q2
 Compute Mann-Kendall and Spearman's Correlation Rank Test for each time series. Ask R to print the results. Interpret the results. 
+```{r}
+MannKendall(Renewable_ts.df[,2])
+MannKendall(Renewable_ts.df[,3])
+MannKendall(Renewable_ts.df[,4])
+
+cor.test(Renewable_ts.df[,2], Renewable_ts.df[,1], 
+                    method = "pearson")
+cor.test(Renewable_ts.df[,3], Renewable_ts.df[,1], 
+                    method = "pearson")
+cor.test(Renewable_ts.df[,4], Renewable_ts.df[,1], 
+                    method = "pearson")
+```
+Each of the Mann-Kendall tests have a null hypothesis of series stationarity and an alternate hypothesis of a series trend. In each of the three series, Total Biomass Energy Production, Total Renewable Energy Production, and Hydroelectric Power Consumption we reject the null hypothesis of stationarity with p values of very close to 0. In all three series, I am confident that each series has a trend: the first two are positive, Hydro is negative. 
+
+The Spearman's Rank Correlation test has a null hypothesis that says the two tested variables do not covary and an alternate hypothesis that says they do. In all three of my tests, which compare my three series of note to the date, we reject the null hypothesis with p-values very close to zero. I am confident all three of my series: Total Biomass Energy Production, Total Renewable Energy Production, and Hydroelectric Power Consumption covary with time.
 
 ## Decomposing the series
 
@@ -50,6 +129,25 @@ For this part you will work only with the following columns: Solar Energy Consum
 Create a data frame structure with these two time series only and the Date column. Drop the rows with *Not Available* and convert the columns to numeric. You can use filtering to eliminate the initial rows or conver to numeric and then use the drop_na() function. If you are familiar with pipes for data wrangling, try using it!
 
 ```{r}
+Renewable.df <- read.csv("../Data/Table_10.1_Renewable_Energy_Production_and_Consumption_by_Source.csv")
+
+Renewable_date<-Renewable.df[14:585,1]
+Renewable_SolarWind.df<-Renewable.df[14:585,8:9]
+
+colnames(Renewable_SolarWind.df)=c("Solar Energy Consumption","Wind Energy Consumption")
+Renewable_SolarWind.df$Date<-Renewable_date
+
+Renewable_SolarWind.df$`Solar Energy Consumption`<-as.numeric(Renewable_SolarWind.df$`Solar Energy Consumption`)
+Renewable_SolarWind.df$`Wind Energy Consumption`<-as.numeric(Renewable_SolarWind.df$`Wind Energy Consumption`)
+
+Renewable_SolarWind.df<-drop_na(Renewable_SolarWind.df)
+
+my_date <- paste(Renewable_SolarWind.df[,3]) 
+my_date <- ym(my_date)  #function my from package lubridate, my is short for month, year
+
+Renewable_SolarWind.df <- cbind(my_date,Renewable_SolarWind.df[,1:2])
+#head(Renewable_SolarWind.df)
+
 
 ```
 
@@ -61,7 +159,12 @@ Hint: use *scale_x_date(date_breaks = "5 years", date_labels = "%Y")")*
 Try changing the color of the wind series to blue. Hint: use *color = "blue"*
 
 ```{r}
-
+ggplot(Renewable_SolarWind.df) +
+  geom_line(aes(x = Renewable_SolarWind.df$my_date, y = Renewable_SolarWind.df$`Solar Energy Consumption`), color = "red") +
+  geom_line(aes(x = Renewable_SolarWind.df$my_date, y = Renewable_SolarWind.df$`Wind Energy Consumption`), color = "blue") +
+  ylab("Trillion Btu") +
+  xlab("Date") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y")
 ```
 
 ### Q5
@@ -69,17 +172,63 @@ Try changing the color of the wind series to blue. Hint: use *color = "blue"*
 Transform wind and solar series into a time series object and apply the decompose function on them using the additive option. What can you say about the trend component? What about the random component? Does the random component look random? Or does it appear to still have some seasonality on it?
 
 ```{r}
+Renewable_SolarWind_ts<-ts(Renewable_SolarWind.df, frequency=12)
+#SOLAR PLOT
 
+#Using R decompose function
+decompose_Solar=decompose(Renewable_SolarWind_ts[,2], "additive") 
+plot(decompose_Solar)
+
+#Inspect random component
+Solar_random <- decompose_Solar$random   #this would just be the random component then
+mean_Solar <- mean(Solar_random)  
+sd_Solar <- sd(Solar_random)
+
+cat(mean_Solar,sd_Solar)
+#Note random series has some missing values, that is why we got NAs
+
+#Compute mean and standard deviation without missing values
+mean_Solar <- mean(na.exclude(Solar_random))  #exclude NA or missing observation to compute mean and std
+sd_Solar <- sd(na.exclude(Solar_random))
+
+cat(mean_Solar,sd_Solar)
+
+#WIND PLOT
+
+#Using R decompose function
+decompose_Wind=decompose(Renewable_SolarWind_ts[,3], "additive") 
+plot(decompose_Wind)
+
+#Inspect random component
+Wind_random <- decompose_Wind$random   #this would just be the random component then
+mean_Wind <- mean(Wind_random)  
+sd_Wind <- sd(Wind_random)
+
+cat(mean_Wind,sd_Wind)
+#Note random series has some missing values, that is why we got NAs
+
+#Compute mean and standard deviation without missing values
+mean_Wind <- mean(na.exclude(Wind_random))  #exclude NA or missing observation to compute mean and std
+sd_Wind <- sd(na.exclude(Wind_random))
+
+cat(mean_Wind,sd_Wind)
 ```
+The trend component of the Solar (1st plot) and Wind (2nd plot) energy consumption both appear to be steady close to 0 and then linearly increasing at around 2005 for wind energy and 2012 for solar energy. The random components appear to be rather seasonal for both series for the entire plot, however it does seem that the magnitude of the random component increases at the same time their respective trends begin increasing linearily.
 
 ### Q6
 
 Use the decompose function again but now change the type of the seasonal component from additive to multiplicative.
 What happened to the random component this time? 
 ```{r}
+decompose_Solar_m=decompose(Renewable_SolarWind_ts[,2], "multiplicative") 
+plot(decompose_Solar_m)
 
+decompose_Wind_m=decompose(Renewable_SolarWind_ts[,3], "multiplicative") 
+plot(decompose_Wind_m)
 ```
-
+After decomposing both the series using the multiplicative seasonal component, the random component changes significantly. What previously appeared to be a seasonally varying component has become more erratic and less seasonal. The random component is particularly more erratic at earlier times (when the data had smaller observed values). As the observed values increase, the random values diminish in variability significantly and become somewhat seasonally varying. 
 ### Q7
 
 When fitting a model to this data, do you think you need all the historical data? Think about the date from 90s and early 20s. Are there any information from those year we might need to forecast the next six months of Solar and/or Wind consumption. Explain your response.
+
+When fitting a model to this data, it appears that we only need data starting at around 2000 for the Wind Power Consumption and around 2010 for Solar Power Consumption. Prior to those dates, the trends for these two energy sources remain constant and close to 0. Any more information prior to those dates is not very useful if we were to fit a model to the data.
