@@ -100,7 +100,7 @@ for(i in 2:4){
   #Pacf(Renewable_diff.df[,i],lag.max=40,main=paste("Coumn",i,"PACF",sep=""))
 }
 ```
-After differencing these plots with a lag of 1, the Total Biomass Energy Production series still seems to have an obvious trend-the difference along the x axis is close to 0 for a significant stretch of time. The other two series seem to lose their trend after being differenced. Their seasonality is still clear, but only the first trend appears to obviously maintain its trend. However, as the lag increases to larger values (ex: 50), the trends in all three series become more apparent. 
+After differencing these plots with a lag of 1, all three time series seem to have lost their series. They now seem to be stationary plots. However, all three series continue to have a seasonal trend (as we did not difference at lag=12). Still, this differencing does drastically alter our time series plots from their non-differenced plots. 
 
 ### Q2
 Compute Mann-Kendall and Spearman's Correlation Rank Test for each time series. Ask R to print the results. Interpret the results. 
