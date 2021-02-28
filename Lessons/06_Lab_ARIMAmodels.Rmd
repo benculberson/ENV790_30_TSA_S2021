@@ -4,7 +4,7 @@ author: "Luana Lima"
 date: "02/24/2021"
 output: pdf_document
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Objectives
@@ -80,8 +80,8 @@ Since we are working with non-seasonal ARIMA, we need to decompose the series an
 ```{r}
 #Exercise 1: Using R decompose function to decompose the inflow time series for HP15
 
-
-
+decompose_raw_inflow_data=decompose(ts_inflow_data[,15], "additive") 
+plot(decompose_raw_inflow_data)
 ```
 
 To take seasonality only out of the data set, we will use function seasadj() from package forecast. The function returns seasonally adjusted data constructed by removing the seasonal component. It takes one main object that should be created using decompose() function.
@@ -91,13 +91,12 @@ The ACF and PACF from the seasonal adjusted series will help you specify compone
 ```{r}
 
 #Exercise 2: Creating non-seasonal inflow series for HP 15 using seasadj() function
-
-
+decompose_HP_15_adj<-seasadj(decompose_raw_inflow_data)
+plot(decompose_HP_15_adj)
 
 #Exercise 3: Compare ACFs for full series and deseason series
 par(mfrow=c(1,2))
-
-
+acf()
 
 #Exercise 4: Compare PACFs for full series and deseason series
 par(mfrow=c(1,2))
