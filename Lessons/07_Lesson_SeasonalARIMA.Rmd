@@ -4,7 +4,7 @@ author: "Luana Lima"
 date: "02/25/2021"
 output: pdf_document
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setting R code chunk options
@@ -37,7 +37,7 @@ For this module we will work with monthly average for electricity retail price i
 ```{r}
 
 #Importing time series data from text file#
-electricity_price <- read.csv(file="./Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
+electricity_price <- read.csv(file="../Data/Average_retail_price_of_electricity_United_States_monthly.csv",header=TRUE,skip=4)
 
 #Inspect data
 head(electricity_price)
@@ -187,6 +187,8 @@ Look at the twice differenced series to identify model order.
 
 Note that we look at the ACF and PACF plot of the differenced series to try to find the order of the model. Here when we look at the first 12 lags for ACF & PACF we don't see slow decays but it looks like we have cut offs at lag 1 on both plots indicating an ARMA(p=1,q=1), and we know from ndiffs that d=1. 
 
+The non-seasonal component is therefore ARIMA(1, 1, 1)
+
 Now let's look at seasonal lags only (12,24,36,48). ACF has one spike at 12 and PACF has 2 spikes one at 12 and one at 24. This is an indication of a seasonal moving average (SMA). Therefore the order of seasonal component is P=0 and Q=1. We know from nsdiffs that D=1.  
 
 ## Manually fitting seasonal ARIMA to original series
@@ -238,4 +240,4 @@ Pacf(ARIMA_autofit$residuals,lag.max=40)
 ```
 
 ## Discussion: Which one to do? ARIMA or SARIMA?
-
+SARIMA? I'm not sure how to compare them...
