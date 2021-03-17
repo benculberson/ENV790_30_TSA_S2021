@@ -4,7 +4,7 @@ date: "03/03/2021"
 output: pdf_document
 geometry: margin=2.54cm
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Objectives
@@ -40,20 +40,20 @@ Today we will work with data from the Climate Change Knowledge Portal from the W
 Research question: Can you see any changes on the rainfall regime or average temperature over time?
 
 ```{r}
-#Exercise 1: Look at the code I used to import and tidy the dataset for today. Make sure you unerstant the pipe structure. 
+#Exercise 1: Look at the code I used to import and tidy the dataset for today. Make sure you understand the pipe structure. 
 
-Rainfall_BR <- read.csv("./Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+Rainfall_BR <- read.csv("../Data/pr_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
-Temp_BR <- read.csv("./Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
+Temp_BR <- read.csv("../Data/tas_1901_2016_BRA.csv", stringsAsFactors = TRUE)
 
-#Within the pipe I am performing the follwoign steps:
+#Within the pipe I am performing the following steps:
 #a Rename the column with Rainfall to get rid of the dots.
 #b Note that on both data sets that is a column with the month name and average. Convert it to a Month column by separating the string, i.e., month in one column and the word "Average" on another. Hint: use the separate() function in the pipe.
 #c Now you should have a column with Month. Use the paste0() function to paste month and year together and create a date object.
 #d Select only the columns of interest: Date and rainfall
 
 Rainfall_BR_processed <-
-  Rainfall_BR %>% 
+  Rainfall_BR %>% #this thing to the left is called a pipe operator, so everything with this will be done under the original data frame, we don't need to keep using $ 
   rename( Rainfall = Rainfall....MM.) %>% 
   separate(Statistics,c("Null","Month","Null2")," ") %>% 
   mutate( Date = my(paste0(Month,"-",Year))) %>% 
@@ -68,7 +68,7 @@ Temp_BR_processed <-
 
 
 #Join the temperature and rainfall into one tidy data frame with 3 columns: Date, Rainfall and Temperature.
-BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
+BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed) #inner_join joins df by date
   
 #Now the dataset it ready to use!
 ```
@@ -80,6 +80,13 @@ BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
 
 #Exercise 2: Plot both series over time on separate plots. Add a trend line using geom_smooth(). Can you say something about the trend just by visualizing the data?
 
+ggplot(BR_complete, aes(x=Date, y=BR_complete[,2])) + 
+            geom_line(color="blue") +
+            ylab(paste0(colnames(BR_complete)[(2)],sep=""))
+
+ggplot(BR_complete, aes(x=Date, y=BR_complete[,3])) + 
+            geom_line(color="blue") +
+            ylab(paste0(colnames(BR_complete)[(3)],sep=""))
 
 ```
 
@@ -87,7 +94,7 @@ BR_complete <- inner_join(Rainfall_BR_processed,Temp_BR_processed)
 
 ```{r}
 #Exercise 3: Create a time series objects for each series using ts(). Make sure you specify the starting point and frequency.
-
+BR_complete_ts<-ts(BR_complete, frequency = 12, start = 1901)
 
 
 ```
@@ -110,8 +117,13 @@ Advantage: able to handle data that has multiple seasonal periods.
 ```{r}
 
 # Exercise 4: Use the stl() function to decompose both series. 
+Rainfall_ts<-BR_complete_ts[,2]
+Temperature_ts<-BR_complete_ts[,3]
 
+stl(Rainfall_ts, s.window = "period")
+stl(Temperature_ts, s.window = "period")
 
+```
 
 # Exercise 5: Use the times series object generated with the stl() to extract the 
 # components of each series and turn them into data frames.
@@ -136,7 +148,7 @@ From now on let's focus on the temperature series only.
 ```{r}
 
 # Exercise 7: Apply the adf.test() or the ndiffs() or nsdiffs() to find the number of differencing needed to achieve stationarity. What's the order of d and D?
-
+#you run this one the ts() object that we've created, not the stl() or the original data
 
 
 
