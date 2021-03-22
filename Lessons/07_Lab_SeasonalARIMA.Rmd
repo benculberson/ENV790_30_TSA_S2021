@@ -182,7 +182,7 @@ From now on let's focus on the temperature series only.
 
 ## Adding explanantory variables to the model
 
-The ARIMA family has another variation called ARIMAX that allows you to add exogenous variables to you ARIMA model. The argument on the auto.arima that allows you to add an external regressor is the `xreg=`. For example, could rainfall explain some of the variability in temperature? 
+The ARIMA family has another variation called ARIMAX that allows you to add exogenous variables to you ARIMA model. The argument on the auto.arima() that allows you to add an external regressor is the `xreg=`. For example, could rainfall explain some of the variability in temperature? 
 
 ```{r}
 #Exercise 11: Plot a scatterplot Temperature ~ Rainfall. Can you see a relationship? Can you tell if it's linear? Run a regression using the `lm()` to support your answer.
