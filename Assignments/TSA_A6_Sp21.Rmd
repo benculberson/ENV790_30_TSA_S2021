@@ -21,7 +21,18 @@ When you have completed the assignment, **Knit** the text and code into a single
 
 ```{r}
 #Load/install required package here
+library(forecast)
+library(tseries)
+library(lubridate)
+library(ggplot2)
+library(Kendall)
+library(outliers)
+library(tidyverse)
+library(smooth)
 
+#New package for M9 to assist with tables
+#install.packages("kableExtra")
+library(kableExtra)
 ```
 
 ## Importing and processing the data set
@@ -35,7 +46,44 @@ Packages needed for this assignment: "forecast","tseries". Do not forget to load
 Import the csv file and create a time series object for natural gas. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
 
 ```{r}
+net_generation <- read.csv(
+  file="../Data/Net_generation_United_States_all_sectors_monthly.csv",
+  header=TRUE,
+  skip=3)
 
+#Inspect data
+head(net_generation)
+nvar <- ncol(net_generation) - 1
+nobs <- nrow(net_generation)
+
+net_generation_processed <-
+  net_generation %>%
+  mutate( Month = my(Month) ) %>% 
+  rename( All.Fuels = all.fuels..utility.scale..thousand.megawatthours ) %>% 
+  rename( Coal = coal.thousand.megawatthours ) %>% 
+  rename( Natural.Gas = natural.gas.thousand.megawatthours ) %>% 
+  rename( Nuclear = nuclear.thousand.megawatthours ) %>% 
+  rename( Conventional.Hydroelectric = conventional.hydroelectric.thousand.megawatthours ) %>% 
+  arrange( Month )
+
+summary(net_generation_processed)
+
+ts_net_generation <- ts(
+  net_generation_processed[,2:(nvar+1)],
+  start=c(year(net_generation_processed$Month[1]),month(net_generation_processed$Month[1])),
+  frequency=12) 
+
+#note that we are only transforming columns with electricity price, not the date columns  
+head(ts_net_generation,15)
+tail(ts_net_generation,15)
+
+plot(net_generation_processed$Natural.Gas)
+
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(net_generation_processed$Natural.Gas, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(net_generation_processed$Natural.Gas, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
 ```
 
 ### Q2
@@ -43,6 +91,17 @@ Import the csv file and create a time series object for natural gas. Make you su
 Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized natural gas series. Plot the deseasonalized series over time and corresponding ACF and PACF. Compare with the plots obtained in Q1.
 
 ```{r}
+#Using R decompose function
+decompose_natural_gas <- decompose(ts_net_generation[,"Natural.Gas"],"additive")
+plot(decompose_natural_gas)
+
+deseasonal_natural_gas <- seasadj(decompose_natural_gas)
+plot(deseasonal_natural_gas)
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot <- Acf(deseasonal_natural_gas, lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(deseasonal_natural_gas, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
 
 ```
 
@@ -53,28 +112,41 @@ Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series
 Run the ADF test and Mann Kendall test on the deseasonalized data from Q2. Report and explain the results.
 
 ```{r}
+print("Results for ADF test/n")
+print(adf.test(deseasonal_natural_gas,alternative = "stationary"))
 
+print("Results of Mann Kendall on deseasonalized Natural Gas data")
+print(summary(MannKendall(deseasonal_natural_gas)))
 ```
+The ADF test has a null hypothesis that states that the data has a unit root and that its trend will not eventually return to a stationary trend. The alternative hypothesis states that there is not a unit root and is not dependent entirely on the previous observation. This ADF test shows a p-value with 0.01 which means we reject the null hypothesis, suggesting that we have a deterministic trend. 
+
+The Mann Kendall test's null hypothesis states that the data is stationary and its alternate hypothesis states that the data follows a trend. It's two sided p-value of =< 2.22e-16 tells us to reject the null hypothesis of stationary data.
+
 
 ### Q4
 
 Using the plots from Q2 and test results from Q3 identify the ARIMA model parameters $p,d$ and $q$. Note that in this case because you removed the seasonal component prior to identifying the model you don't need to worry about seasonal component. Clearly state your criteria and any additional function in R you might use. DO NOT use the $auto.arima()$ function. You will be evaluated on ability to can read the plots and interpret the test results.
 
-```{r}
-
-```
+Based on the ACF and PACF plots from Q2 and the test results from Q3, this ARIMA model has p = 1, d = 1, and q = 0. This is an autoregressive model with a deterministic trend. The ADF and Mann Kendall tests show us that this model has a deterministic trend and must be differenced (d=1) and the slow decay of the ACF along with the lag = 1 cutoff on the PACF show that this is an AR model with p = 1. This is not an MA model so q = 0. 
 
 ### Q5
 
 Use $Arima()$ from package "forecast" to fit an ARIMA model to your series considering the order estimated in Q4. Should you allow for constants in the model, i.e., $include.mean = TRUE$ or $include.drift=TRUE$. **Print the coefficients** in your report. Hint: use the $cat()$ function to print.
 
 ```{r}
-
+ARIMA_NG <- Arima(deseasonal_natural_gas,order=c(1,1,0),seasonal=c(0,0,0),include.mean=FALSE,include.drift=FALSE)
+print(ARIMA_NG)
 ```
 
 ### Q6
 
 Now plot the residuals of the ARIMA fit from Q5 along with residuals ACF and PACF on the same window. You may use the $checkresiduals()$ function to automatically generate the three plots. Do the residual series look like a white noise series? Why?
+
+```{r}
+checkresiduals(ARIMA_NG)
+```
+After running the checkresiduals function, these 3 plots appear to show a reasonable residual white noise series. The residual series seems random, normally distributed and the ACF does not appear to show a significant self-correlation.
+
 
 ## Modeling the original series (with seasonality)
 
@@ -83,9 +155,30 @@ Now plot the residuals of the ARIMA fit from Q5 along with residuals ACF and PAC
 Repeat Q4-Q6 for the original series (the complete series that has the seasonal component). Note that when you model the seasonal series, you need to specify the seasonal part of the ARIMA model as well, i.e., $P$, $D$ and $Q$.
 
 ```{r}
+complete_NG<-ts_net_generation[,"Natural.Gas"]
+
+plot(complete_NG)
+#ACF and PACF plots
+par(mfrow=c(1,2))
+ACF_Plot_2 <- Acf(complete_NG, lag = 40, plot = TRUE,main="")
+PACF_Plot_2 <- Pacf(complete_NG, lag = 40, plot = TRUE,main="")
+par(mfrow=c(1,1))
+
+print("Results for ADF test/n")
+print(adf.test(complete_NG,alternative = "stationary"))
+
+print("Results of Mann Kendall on Seasonal Natural Gas data")
+print(summary(MannKendall(complete_NG)))
 
 ```
+After plotting the seasonal trend and its ACF and PACF, and after running the ADF and Mann Kendall tests, the associated ARIMA model has p = 2, d = 1, and q = 0. This is an autoregressive seasonal model with a deterministic trend. The ADF and Mann Kendall tests show us that this model has a deterministic trend and must be differenced both seasonally and non-seasonally (d=D=1, because I know that this has a seasnal trend) and the slow decay of the ACF along with the lag = 2 cutoff on the PACF show that this is an AR model with p = 2. This is not an MA model so q = 0. Furthermore, the lag spikes at lag = 12, 24, and 36 show that P = 1 as well. 
 
+```{r}
+ARIMA_NG_seasonal <- Arima(deseasonal_natural_gas,order=c(2,1,0),seasonal=c(1,1,0),include.mean=FALSE,include.drift=FALSE)
+print(ARIMA_NG_seasonal)
+checkresiduals(ARIMA_NG_seasonal)
+```
+After running the ARIMA model as (2,1,0)x(1,1,0), the residual series does once again appear to be a reasonable white noise series. The residuals appear to be random, somewhat normally distributed, and there does not seem to be any serious self-correlation.
 
 ### Q8
 
