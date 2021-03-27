@@ -1,5 +1,5 @@
 ---
-title: "M8: Forecasting in R: Simple Averaging Models & ARIMA"
+title: "M9: Forecast Accuracy"
 author: "Luana Lima"
 date: "03/12/2021"
 output: pdf_document
@@ -169,7 +169,7 @@ SNAIVE_scores <- accuracy(SNAIVE_seas)
 plot(SNAIVE_seas)
 
 # Model 3:  SARIMA 
-#remember auto.arima does not call the forecast() internally so we need one more step
+#remember auto.arima does not call the forecast() internally so we need one more step - add that h=12, which we already did for the other objects 
 SARIMA_for <- forecast(SARIMA_autofit,h=12)
 SARIMA_scores <- accuracy(SARIMA_for)
 plot(SARIMA_for)

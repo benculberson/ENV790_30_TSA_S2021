@@ -1,7 +1,7 @@
 ---
 title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
 subtitle: "Assignment 6 - Due date 03/26/21"
-author: "Student Name"
+author: "Benjamin Culberson"
 output: pdf_document
 geometry: margin=2.54cm
 header-includes:
@@ -77,12 +77,12 @@ ts_net_generation <- ts(
 head(ts_net_generation,15)
 tail(ts_net_generation,15)
 
-plot(net_generation_processed$Natural.Gas)
+plot(ts_net_generation[,"Natural.Gas"])
 
 #ACF and PACF plots
 par(mfrow=c(1,2))
-ACF_Plot <- Acf(net_generation_processed$Natural.Gas, lag = 40, plot = TRUE,main="")
-PACF_Plot <- Pacf(net_generation_processed$Natural.Gas, lag = 40, plot = TRUE,main="")
+ACF_Plot <- Acf(ts_net_generation[,"Natural.Gas"], lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(ts_net_generation[,"Natural.Gas"], lag = 40, plot = TRUE,main="")
 par(mfrow=c(1,1))
 ```
 
@@ -104,6 +104,7 @@ PACF_Plot <- Pacf(deseasonal_natural_gas, lag = 40, plot = TRUE,main="")
 par(mfrow=c(1,1))
 
 ```
+The plots in Q2 clearly show the deseasoned data from Q1. The overall trend appears the same but most  the large jumps I would associate with seasonality have been removed (there still are some here or there). The ACF also has the sinusoidal variation removed in the Q2 data (compared to the Q1) and the spikes in the PACF that exist in the Q1 data do not exist in the Q2 data.
 
 ## Modeling the seasonally adjusted or deseasonalized series
 
@@ -134,7 +135,7 @@ Based on the ACF and PACF plots from Q2 and the test results from Q3, this ARIMA
 Use $Arima()$ from package "forecast" to fit an ARIMA model to your series considering the order estimated in Q4. Should you allow for constants in the model, i.e., $include.mean = TRUE$ or $include.drift=TRUE$. **Print the coefficients** in your report. Hint: use the $cat()$ function to print.
 
 ```{r}
-ARIMA_NG <- Arima(deseasonal_natural_gas,order=c(1,1,0),seasonal=c(0,0,0),include.mean=FALSE,include.drift=FALSE)
+ARIMA_NG <- Arima(deseasonal_natural_gas,order=c(1,1,0),seasonal=c(0,0,0),include.mean=TRUE,include.drift=TRUE)
 print(ARIMA_NG)
 ```
 
@@ -171,22 +172,20 @@ print("Results of Mann Kendall on Seasonal Natural Gas data")
 print(summary(MannKendall(complete_NG)))
 
 ```
-After plotting the seasonal trend and its ACF and PACF, and after running the ADF and Mann Kendall tests, the associated ARIMA model has p = 2, d = 1, and q = 0. This is an autoregressive seasonal model with a deterministic trend. The ADF and Mann Kendall tests show us that this model has a deterministic trend and must be differenced both seasonally and non-seasonally (d=D=1, because I know that this has a seasnal trend) and the slow decay of the ACF along with the lag = 2 cutoff on the PACF show that this is an AR model with p = 2. This is not an MA model so q = 0. Furthermore, the lag spikes at lag = 12, 24, and 36 show that P = 1 as well. 
+After plotting the seasonal trend and its ACF and PACF, and after running the ADF and Mann Kendall tests, the associated SARIMA model has p = 2, d = 1, and q = 0. This is an autoregressive seasonal model with a deterministic trend. The ADF and Mann Kendall tests show us that this model has a deterministic trend and must be differenced both seasonally and non-seasonally (d=D=1, because I know that this has a seasonal trend) and the slow decay of the ACF along with the lag = 2 cutoff on the PACF show that this is an AR model with p = 2. This is not an MA model so q = 0. The small lag spikes in the PACF likely indicate  that P = 1 and the lag spikes in the ACF at lag = 12, 24, 36 indicate that Q = 1 as well. 
 
 ```{r}
-ARIMA_NG_seasonal <- Arima(deseasonal_natural_gas,order=c(2,1,0),seasonal=c(1,1,0),include.mean=FALSE,include.drift=FALSE)
+ARIMA_NG_seasonal <- Arima(complete_NG,order=c(2,1,0),seasonal=c(1,1,1),include.mean=TRUE,include.drift=TRUE)
 print(ARIMA_NG_seasonal)
 checkresiduals(ARIMA_NG_seasonal)
 ```
-After running the ARIMA model as (2,1,0)x(1,1,0), the residual series does once again appear to be a reasonable white noise series. The residuals appear to be random, somewhat normally distributed, and there does not seem to be any serious self-correlation.
+After running the ARIMA model as (2,1,0)x(1,1,1), the residual series does once again appear to be a reasonable white noise series. The residuals appear to be random, somewhat normally distributed, and there does not seem to be any serious self-correlation.
 
 ### Q8
 
 Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is better representing the Natural Gas Series? Is that a fair comparison? Explain your response.
 
-```{r}
-
-```
+After running the two separate models, both seem to have relatively normally distributed residuals with no significant self correlation - they are both reasonably look like white noise series. However, if I had to pick one of these models I would pick the SARIMA (Q7) model. The ACF of the ARIMA model, while showing only a small level of self correlation, does seem to have a pattern. There are noticeable and seemingly recurring spikes throughout the ACF as we move from lag = 1 to lag = 40. Again, these spikes have low values and I'm not that concerned with them, but the SARIMA model only has a single spike at lag = 8 and so I am more comfortable picking the SARIMA model.
 
 
 ## Checking your model with the auto.arima()
@@ -198,15 +197,23 @@ Compare the residual series for Q7 and Q6. Can you tell which ARIMA model is bet
 Use the $auto.arima()$ command on the **deseasonalized series** to let R choose the model parameter for you. What's the order of the best ARIMA model? Does it match what you specified in Q4?
 
 ```{r}
-
+auto.arima(deseasonal_natural_gas)
 ```
+I chose ARIMA(1,1,0) while the auto.arima went with ARIMA(1,1,1). Evidently the function identified a moving average component to the model that I did not. I'm not sure why it would select this order. The PACF of the deseasonal data showed a clear cutoff at lag = 1 and a clear slow decay in the ACF. Based on this information I chose to just include an AR process in my model. There may be another reason to choose an MA process that I am missing, but for nowI remain confident in my reasoning.
 
+The ADF and Mann Kendall tests showed a deterministic trend that I decided needed to be differenced. I chose d = 1 for my model and the auto.arima agreed.
 
 ### Q10
 
 Use the $auto.arima()$ command on the **original series** to let R choose the model parameters for you. Does it match what you specified in Q7?
 
 ```{r}
-
+auto.arima(complete_NG)
 ```
+I chose ARIMA(2,1,0)(1,1,1) while the auto.arima went with ARIMA(1,0,0)(0,1,1)
 
+I chose to difference the equation both seasonally and non-seasonally and while the auto.arima function agreed with my seasonal difference, it did not with my non-seasonal difference. The reason I chose to include both differences is because the non-seasonal data had to be differenced in the previous question, so I felt like just seasonally differencing the data would be insufficient, but I suppose I may have been wrong.
+
+I chose a non-seasonal AR order of 2, because the PACF of the data cuts off at lag = 2, not 1. The auto.arima function does not agree and felt that an order of 1 was better. I'm not sure why. 
+
+The auto.arima function agreed that the spikes in the ACF at lag = 12, 24, etc. made a strong case for the seasonal MA process to have an order of 1. However, the auto.arima function did not agree that the small spikes along the PACF at roughly lag =12, 24, 36 indicate a seasonal autoregressive component to the model. This is somewhat understandable given that the spikes were actually at lag = 13, 25, 37 but I was under the impression that this might have had something to do with p = 2 (which was not the correct value for p).
