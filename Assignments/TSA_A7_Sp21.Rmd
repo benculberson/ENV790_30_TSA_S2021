@@ -1,0 +1,222 @@
+---
+title: "ENV 790.30 - Time Series Analysis for Energy Data | Spring 2021"
+subtitle: "Assignment 7 - Due date 04/07/21"
+author: "Student Name"
+output: pdf_document
+geometry: margin=2.54cm
+header-includes:
+  - \usepackage{enumerate}
+  - \usepackage{enumitem}
+---
+
+## Directions
+
+You should open the .rmd file corresponding to this assignment on RStudio. The file is available on our class repository on Github. And to do so you will need to fork our repository and link it to your RStudio.
+
+Once you have the project open the first thing you will do is change "Student Name" on line 3 with your name. Then you will start working through the assignment by **creating code and output** that answer each question. Be sure to use this assignment document. Your report should contain the answer to each question and any plots/tables you obtained (when applicable).
+
+When you have completed the assignment, **Knit** the text and code into a single PDF file. Rename the pdf file such that it includes your first and last name (e.g., "LuanaLima_TSA_A07_Sp21.Rmd"). Submit this pdf using Sakai.
+
+## Set up
+
+Some packages needed for this assignment: `forecast`,`tseries`,`smooth`. Do not forget to load them before running your script, since they are NOT default packages.
+
+```{r}
+#Load/install required package here
+library(forecast)
+library(tseries)
+library(smooth)
+library(data.table)
+library(gcookbook)
+library(stats)
+```
+
+## Importing and processing the data set
+
+Consider the data from the file "inflowtimeseries.txt". The data corresponds to the monthly inflow in $m^{3}/s$ for some hydro power plants in Brazil. You will only use the last column of the data set which represents one hydro plant in the Amazon river basin. The data span the period from January 1931 to August 2011 and is provided by the Brazilian ISO.
+
+For all parts of the assignment prepare the data set such that the model consider only the data from January 2000 up to December 2009. Leave the year 2010 of data (January 2010 to December 2010) for the out-of-sample analysis. Do **NOT** use data fro 2010 and 2011 for model fitting. You will only use it to compute forecast accuracy of your model.
+
+```{r}
+inflow<-read.csv("../Data/inflowtimeseriescleaned.csv", header=FALSE)
+inflow_decade<-inflow[829:960,]
+
+inflow_decade_date<-inflow_decade[,1]
+
+colnames(inflow_decade)=c("Date","Inflow")
+inflow_decade$`Inflow`<-as.numeric(inflow_decade$`Inflow`)
+my_date <- paste(inflow_decade[,1]) 
+my_date <- my(my_date) 
+my_date_decade<-my_date
+my_date<-my_date[1:120]
+
+
+inflow_decade <- cbind(my_date,inflow_decade[,2])
+
+head(inflow_decade)
+
+ncolumns_decade <- ncol(inflow_decade)
+nmonths_decade <- nrow(inflow_decade) 
+
+inflow_decade_ts<-ts(inflow_decade[,2], start=c(2000, 1), end=c(2010,12), frequency=12)
+inflow_decade_ts<-cbind(my_date_decade,inflow_decade_ts)
+```
+
+
+```{r}
+
+inflow_09<-inflow_decade[1:120,]
+
+head(inflow_09)
+
+ncolumns <- ncol(inflow_09)
+nmonths <- nrow(inflow_09) 
+
+inflow_09_ts<-ts(inflow_09, start=c(2000, 1), end=c(2009,12), frequency=12)
+```
+
+
+## Part I: Preparing the data sets
+
+### Q1
+
+Read the file into a data frame. Prepare your time series data vector such that observations start in January 2000 and end in December 2009. Make you sure you specify the **start=** and **frequency=** arguments. Plot the time series over time, ACF and PACF.
+
+```{r}
+par(mfrow=c(1,3)) 
+plot(inflow_09_ts[,2], ylab="Monthly Inflow (m^3/s)",  col=c("blue"))+title("Inflow 2000-2009")
+ACF_Plot <- Acf(inflow_09_ts[,2], lag = 40, plot = TRUE,main="")
+PACF_Plot <- Pacf(inflow_09_ts[,2], lag = 40, plot = TRUE,main="")
+```
+
+
+
+### Q2
+
+Using the $decompose()$ or $stl()$ and the $seasadj()$ functions create a series without the seasonal component, i.e., a deseasonalized inflow series. Plot the deseasonalized series and original series together using ggplot, make sure your plot includes a legend. Plot ACF and PACF for the deaseasonalized series. Compare with the plots obtained in Q1.
+
+```{r}
+decompose_inflow_09_ts <- decompose(inflow_09_ts[,2],"additive")
+plot(decompose_inflow_09_ts)
+deseasonal_inflow_09_ts <- seasadj(decompose_inflow_09_ts)  
+
+#par(mfrow=c(1,3)) 
+
+
+ggplot()+
+  geom_line(aes(x = month, y = deseasonal_inflow_09_ts, color = "Deseasonal Inflow")) +
+  geom_line(aes(x = month, y = inflow_09_ts[,2], color = "Seasonal Inflow"))+
+  ylab("Inflow (m^3/s)") +
+  xlab("Date") +
+  ggtitle("Deseasonal Inflow 2000-2009")
+
+par(mfrow=c(1,2)) 
+ACF_Plot_deseasonal <- Acf(deseasonal_inflow_09_ts, lag = 40, plot = TRUE,main="Deseasonal ACF")
+PACF_Plot_deseasonal <- Pacf(deseasonal_inflow_09_ts, lag = 40, plot = TRUE,main="Deseasonal PACF")
+par(mfrow=c(1,2)) 
+ACF_Plot <- Acf(inflow_09_ts[,2], lag = 40, plot = TRUE,main="Seasonal ACF")
+PACF_Plot <- Pacf(inflow_09_ts[,2], lag = 40, plot = TRUE,main="Seasonal PACF")
+```
+After deseasoning the data and based on the plot, it seems that the function worked and we are just left with the trend and the random components. However, the ACF of the deseasonal data still seems to show a significant seasonal autocorrelation. There certainly is less seasonality when compared to the seasonal plots but it has not been eliminated entirely. Just looking at the decomposed plot, it seems as though the random element the decompose() function identified still has some seasonality in it. 
+
+## Part II: Forecasting with ARIMA models and its variations
+
+### Q3
+
+Fit a non-seasonal ARIMA$(p,d,q)$ model usign the auto.arima() function to the non-seasonal data. Forecast 12 months ahead of time using the $forecast()$ function. Plot your forecasting results and further include on the plot the last year of non-seasonal data to compare with forecasted values (similar to the plot on the lesson file for M10).
+
+```{r}
+nonseasonal_ARIMA_fit <- auto.arima(deseasonal_inflow_09_ts)
+print(nonseasonal_ARIMA_fit)
+ARIMA_forecast <- forecast(object = nonseasonal_ARIMA_fit, h = 12)
+plot(ARIMA_forecast)
+checkresiduals(ARIMA_forecast)
+
+
+#decompose_inflow_decade_ts <- decompose(inflow_decade_ts[,2],"additive")
+#plot(decompose_inflow_decade_ts)
+#deseasonal_inflow_decade_ts <- seasadj(decompose_inflow_decade_ts)
+```
+
+### Q4
+
+Put the seasonality back on your forecasted values and compare with the original seasonal data values. $Hint:$ One way to do it is by summing the last year of the seasonal component from your decompose object to the forecasted series. 
+
+
+```{r}
+seasonalARIMAforecast<-ARIMA_forecast+seasonal(decompose_inflow_09_ts)
+
+
+```
+
+### Q5
+
+Repeat Q3 for the original data, but now fit a seasonal ARIMA$(p,d,q)x(P,D,Q)_ {12}$ also using the auto.arima().
+
+```{r}
+SARIMA_fit <- auto.arima(inflow_09_ts[,2])
+print(SARIMA_fit)
+SARIMA_forecast <- forecast(object = SARIMA_fit, h = 12)
+plot(SARIMA_forecast)
+checkresiduals(SARIMA_forecast)
+```
+
+### Q6
+
+Compare the plots from Q4 and Q5 using the autoplot() function.
+
+## Part III: Forecasting with Other Models
+
+### Q7
+
+Fit an exponential smooth model to the original time series using the function $es()$  from package `smooth`. Note that this function automatically does the forecast. Do not forget to set the arguments: silent=FALSE and holdout=FALSE, so that the plot is produced and the forecast is for the year of 2010.
+
+```{r}
+InflowES_seas<-es(inflow_09_ts[,2], silent=FALSE, holdout=FALSE)
+checkresiduals(InflowES_seas)
+```
+
+### Q8
+
+Fit a state space model to the original time series using the function $StructTS()$ from package `stats`. Which one of the tree model we learned should you try: "local", "trend", or "BSM". Why? Play with argument `fixed` a bit to try to understand how the different variances can affect the model. If you can't seem to find a variance that leads to a good fit here is a hint: try $fixed=c(0.1, 0.001, NA, NA)$. Since $StructTS()$ fits a state space model to the data, you need to use $forecast()$ to generate the forecasts. Like you do for the ARIMA fit. 
+
+```{r}
+InflowSP_seas <- StructTS(inflow_09_ts[,2],
+                    type="BSM",fixed=c(0,0.001,NA,NA))   #this function has convergence issues
+checkresiduals(InflowSP_seas)
+
+#Generating forecasts
+# StructTS() does not call the forecast() internally so we need one more step
+InflowSP_seas_for <- forecast(InflowSP_seas,h=n_for)
+plot(InflowSP_seas_for)
+```
+We should use the BSM tree model because this is a seasonal time series model and a basic structural mode fits this series by maximum likelihood so it's pretty accurate.
+
+## Part IV: Checking Forecast Accuracy
+
+### Q9
+
+Make one plot with the complete original seasonal historical data (Jan 2000 to Dec 2010). Now add the forecasts from each of the developed models in parts Q4, Q5, Q7 and Q8. You can do it using the autoplot() combined with autolayer(). If everything is correct in terms of time line, the forecasted lines should appear only in the final year. If you decide to use ggplot() you will need to create a data frame with all the series will need to plot. Remember to use a different color for each model and add a legend in the end to tell which forecast lines corresponds to each model.
+
+
+```{r}
+
+```
+
+### Q10
+
+From the plot in Q9 which model or model(s) are leading to the better forecasts? Explain your answer. Hint: Think about which models are doing a better job forecasting the high and low inflow months for example.
+
+
+```{r}
+
+```
+
+### Q11
+
+Now compute the following forecast metrics we learned in class: RMSE and MAPE,  for all the models you plotted in part Q9. You can do this by hand since your have forecasted and observed values for the year of 2010. Or you can use R function $accuracy()$ from package "forecast" to do it. Build and a table with the results and highlight the model with the lowest MAPE. Does the lowest MAPE corresponds match your answer for part Q10?
+
+```{r}
+
+```
+
