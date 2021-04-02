@@ -133,9 +133,7 @@ plot(ARIMA_forecast)
 checkresiduals(ARIMA_forecast)
 
 
-#decompose_inflow_decade_ts <- decompose(inflow_decade_ts[,2],"additive")
-#plot(decompose_inflow_decade_ts)
-#deseasonal_inflow_decade_ts <- seasadj(decompose_inflow_decade_ts)
+
 ```
 
 ### Q4
@@ -144,9 +142,11 @@ Put the seasonality back on your forecasted values and compare with the original
 
 
 ```{r}
-seasonalARIMAforecast<-ARIMA_forecast+seasonal(decompose_inflow_09_ts)
+SNAIVE_Inflow <- snaive(seasonal(decompose_inflow_09_ts), h=12, holdout=FALSE)
+checkresiduals(SNAIVE_Inflow)
+plot(SNAIVE_Inflow)
 
-
+#SeasonalARIMA<-ARIMA_forecast+SNAIVE_Inflow 
 ```
 
 ### Q5
@@ -200,7 +200,9 @@ Make one plot with the complete original seasonal historical data (Jan 2000 to D
 
 
 ```{r}
-
+#decompose_inflow_decade_ts <- decompose(inflow_decade_ts[,2],"additive")
+#plot(decompose_inflow_decade_ts)
+#deseasonal_inflow_decade_ts <- seasadj(decompose_inflow_decade_ts)
 ```
 
 ### Q10
