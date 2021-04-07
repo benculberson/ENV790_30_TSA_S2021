@@ -133,8 +133,8 @@ last_obs <- ts_electricity_price[(nobs-n_for+1):nobs,"All.sectors"]
 #no need to make obs_2020 a ts object
 
 #If you not sure what we did here comment the following lines and check the values/dates
-#tail(ts_price,12)
-#last_obs
+tail(ts_price,12)
+last_obs
 ```
 
 

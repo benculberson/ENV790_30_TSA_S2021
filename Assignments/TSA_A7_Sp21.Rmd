@@ -29,6 +29,9 @@ library(smooth)
 library(data.table)
 library(gcookbook)
 library(stats)
+library(lubridate)
+library(ggplot2)
+library(kableExtra)
 ```
 
 ## Importing and processing the data set
@@ -55,6 +58,9 @@ inflow_decade <- cbind(my_date,inflow_decade[,2])
 
 head(inflow_decade)
 
+nvar <- ncol(inflow_decade) - 1
+nobs <- nrow(inflow_decade)
+
 ncolumns_decade <- ncol(inflow_decade)
 nmonths_decade <- nrow(inflow_decade) 
 
@@ -68,6 +74,8 @@ inflow_decade_ts<-cbind(my_date_decade,inflow_decade_ts)
 inflow_09<-inflow_decade[1:120,]
 
 head(inflow_09)
+
+
 
 ncolumns <- ncol(inflow_09)
 nmonths <- nrow(inflow_09) 
@@ -104,8 +112,8 @@ deseasonal_inflow_09_ts <- seasadj(decompose_inflow_09_ts)
 
 
 ggplot()+
-  geom_line(aes(x = month, y = deseasonal_inflow_09_ts, color = "Deseasonal Inflow")) +
-  geom_line(aes(x = month, y = inflow_09_ts[,2], color = "Seasonal Inflow"))+
+  geom_line(aes(x = my_date, y = deseasonal_inflow_09_ts, color = "Deseasonal Inflow")) +
+  geom_line(aes(x = my_date, y = inflow_09_ts[,2], color = "Seasonal Inflow"))+
   ylab("Inflow (m^3/s)") +
   xlab("Date") +
   ggtitle("Deseasonal Inflow 2000-2009")
@@ -142,11 +150,12 @@ Put the seasonality back on your forecasted values and compare with the original
 
 
 ```{r}
-SNAIVE_Inflow <- snaive(seasonal(decompose_inflow_09_ts), h=12, holdout=FALSE)
-checkresiduals(SNAIVE_Inflow)
-plot(SNAIVE_Inflow)
+decompose_inflow_decade_ts <- decompose(inflow_decade_ts[,2],"additive")
+SNAIVE_Inflow <- window(decompose_inflow_decade_ts$seasonal, start = 2010) + window(ARIMA_forecast$mean)
 
-#SeasonalARIMA<-ARIMA_forecast+SNAIVE_Inflow 
+plot(inflow_decade_ts[,2])
+lines(SNAIVE_Inflow,col="red")
+
 ```
 
 ### Q5
@@ -164,6 +173,13 @@ checkresiduals(SARIMA_forecast)
 ### Q6
 
 Compare the plots from Q4 and Q5 using the autoplot() function.
+```{r}
+autoplot(inflow_decade_ts[,2]) +
+  autolayer(SNAIVE_Inflow, PI=FALSE, series="Naïve") +
+  autolayer(SARIMA_forecast,PI=FALSE, series="SARIMA")
+```
+It seems as though the SARIMA model works slightly better as a predictor of our 2010 data than the naive model. The seasonality is more accurate in the above graph. 
+
 
 ## Part III: Forecasting with Other Models
 
@@ -172,7 +188,7 @@ Compare the plots from Q4 and Q5 using the autoplot() function.
 Fit an exponential smooth model to the original time series using the function $es()$  from package `smooth`. Note that this function automatically does the forecast. Do not forget to set the arguments: silent=FALSE and holdout=FALSE, so that the plot is produced and the forecast is for the year of 2010.
 
 ```{r}
-InflowES_seas<-es(inflow_09_ts[,2], silent=FALSE, holdout=FALSE)
+InflowES_seas<-es(inflow_09_ts[,2], model="ZZZ", h=12, silent="output", holdout=FALSE)
 checkresiduals(InflowES_seas)
 ```
 
@@ -187,10 +203,10 @@ checkresiduals(InflowSP_seas)
 
 #Generating forecasts
 # StructTS() does not call the forecast() internally so we need one more step
-InflowSP_seas_for <- forecast(InflowSP_seas,h=n_for)
+InflowSP_seas_for <- forecast(InflowSP_seas,h=12)
 plot(InflowSP_seas_for)
 ```
-We should use the BSM tree model because this is a seasonal time series model and a basic structural mode fits this series by maximum likelihood so it's pretty accurate.
+We should use the BSM tree model because this is a seasonal time series model and a basic structural model fits this series by maximum likelihood so it's pretty accurate.
 
 ## Part IV: Checking Forecast Accuracy
 
@@ -200,25 +216,57 @@ Make one plot with the complete original seasonal historical data (Jan 2000 to D
 
 
 ```{r}
-#decompose_inflow_decade_ts <- decompose(inflow_decade_ts[,2],"additive")
-#plot(decompose_inflow_decade_ts)
-#deseasonal_inflow_decade_ts <- seasadj(decompose_inflow_decade_ts)
+autoplot(inflow_decade_ts[,2]) +
+  #autolayer(ARIMA_forecast, PI=FALSE, series="ARIMA") +
+  autolayer(SNAIVE_Inflow, PI=FALSE, series="Naïve") +
+  autolayer(SARIMA_forecast,PI=FALSE, series="SARIMA") +
+  autolayer(InflowES_seas$forecast, series="SSES") +
+  autolayer(InflowSP_seas_for,PI=FALSE,series="BSM") + 
+  xlab("Month") + ylab("Inflow (m^3/s)") +
+  guides(colour=guide_legend(title="Forecast"))
 ```
 
 ### Q10
 
 From the plot in Q9 which model or model(s) are leading to the better forecasts? Explain your answer. Hint: Think about which models are doing a better job forecasting the high and low inflow months for example.
 
-
-```{r}
-
-```
-
+Based on the plot in Q9, it appears that the BSM model is consistently leading to better forecasts. The BSM seems to properly follow both the highs and lows of the seasonality of 2010 data.
 ### Q11
 
 Now compute the following forecast metrics we learned in class: RMSE and MAPE,  for all the models you plotted in part Q9. You can do this by hand since your have forecasted and observed values for the year of 2010. Or you can use R function $accuracy()$ from package "forecast" to do it. Build and a table with the results and highlight the model with the lowest MAPE. Does the lowest MAPE corresponds match your answer for part Q10?
 
 ```{r}
 
-```
+last_obs <- inflow_decade[(nobs-12+1):nobs] 
 
+#Model 1: Arithmetic mean
+ARIMA_scores <- accuracy(ARIMA_forecast$mean,last_obs)  #store the performance metrics
+
+#Model 2: Seasonal naive 
+SNAIVE_scores <- accuracy(SNAIVE_Inflow,last_obs)
+
+# Model 3:  SARIMA 
+SARIMA_scores <- accuracy(SARIMA_forecast$mean,last_obs)
+
+# Model 4:  SSES
+SSES_scores <- accuracy(InflowES_seas$forecast,last_obs)
+
+# Model 5:  BSM 
+SS_scores <- accuracy(InflowSP_seas_for$mean,last_obs)
+
+#Create Data Frame
+scores <- as.data.frame(rbind(ARIMA_scores, SNAIVE_scores, SARIMA_scores,SSES_scores,SS_scores))
+row.names(scores) <- c("ARIMA", "SNAIVE","SARIMA","SSES","BSM")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))   
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Seasonal Data",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+```
+My answer to part 10, that the BSM model was the best predictor for the 2010 data is confirmed by the table above given its RMSE and its MAE which are both lower than any other model. Based on my own observation and the accuracy scores in the above table, the BSM model is the best predictor of our seasonal data.
